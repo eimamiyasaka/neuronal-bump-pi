@@ -28,6 +28,17 @@ function make_kernel(x)
     return K
 end
 
+# Pulse signal emitted by a single neuron (elementwise)
+# a_n - regulator so pulse has unit area over a period (standard theta-neuron normalisation is "a_n = 2^n (n!)^2 / (2n)!)"; to be tuned later
+# n - pulse sharpness, i.e. positive integer which controls the width of the pulse
+pulse(θ, a_n, n) = a_n .* (1 .- cos.(θ)).^n
+
+# Coupling - turns the pulse field into the drive felt by every neuron
+coupling(P, K) = (K * P) ./ length(P)
+
+# Drive - composes pulse and coupling (called by dynamics)
+drive(θ, K, a_n, n) = coupling(pulse(θ, a_n, n), K)
+
 # --- One RK4 step of size dt ---
 function rk4_step(θ, η, dt)
     k1 = thetadot(θ,            η)
