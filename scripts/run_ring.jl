@@ -11,8 +11,10 @@ function main()
     # --- parameters (locals, not globals) ---
     N  = 512        # network size; start small; scale to 8192 once correct
 
-    η̄  = -0.5       # excitability distribution: Cauchy centre
-    Δ  = 0.05       #                            half-width (heterogeneity)
+    η̄  = -0.4       # excitability distribution: Cauchy centre
+    Δ  = 0.01       #                            half-width (heterogeneity)
+
+    κ = 2.0         # coupling strength (global dial)
 
     n = 2           # pulse sharpness
     a_n = 2.0^n * factorial(n)^2 / factorial(2n)   # derived: unit-area normalisation
@@ -39,7 +41,7 @@ function main()
     # all-at-π => P constant => I should be nearly flat (cos part averages out)
 
     # --- Test D3: one population step should move θ and stay finite ---
-    θ1 = step_population(θ_test, η, K, a_n, n, 0.01)
+    θ1 = step_population(θ_test, η, K, a_n, n, κ, 0.01)
     println("θ changed: ", θ1 != θ_test,
             "   all finite: ", all(isfinite, θ1),
             "   range: ", round(minimum(θ1), digits=3), " ... ", round(maximum(θ1), digits=3))
@@ -49,7 +51,7 @@ function main()
     σ  = 0.5                # bump width
     θ0 = π .* exp.(-(angular_distance(x, x0).^2) ./ (2σ^2))
 
-    Θ_agg = simulate_population(θ0, η, K, a_n, n; T=50.0, dt=0.01)
+    Θ_agg = simulate_population(θ0, η, K, a_n, n, κ; T=50.0, dt=0.01)
 
     # Readout: activity heatmap (neuron on y, time on x)
     activity = 1 .- cos.(Θ_agg)

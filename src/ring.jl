@@ -50,9 +50,9 @@ end
 
 # --- One population RK4 step: advance all N phases by dt ---
 # I (coupling drive) is computed once from θ and held fixed across the 4 RK4 stages
-function step_population(θ, η, K, a_n, n, dt)
+function step_population(θ, η, K, a_n, n, κ, dt)
     I = drive(θ, K, a_n, n)         # synaptic input felt by each neuron (length N) - drive I depends on θ through the pulses, so it should later be recomputed inside each stage (!!!)
-    θ_new = rk4_step(θ, η .+ I, dt) # total drive per neuron = intrinsic η + synaptic I
+    θ_new = rk4_step(θ, η .+ (κ .* I), dt) # total drive per neuron = intrinsic η + synaptic I
     return mod.(θ_new, 2π)          # wrap each phase into [0, 2π)
 end
 
@@ -78,14 +78,14 @@ function simulate_single(η; T=100.0, dt=0.01, θ0=0.0)
 end
 
 # --- Simulate population of neurons ---
-function simulate_population(θ0, η, K, a_n, n; T=100.0, dt=0.01)
+function simulate_population(θ0, η, K, a_n, n, κ; T=100.0, dt=0.01)
     nt = round(Int, T/dt)
     N = length(θ0)
     Θ_agg = zeros(N, nt)        # storage: row = neuron, col = timestep
     θ = copy(θ0)            # evolving state vector
 
     for i in 1:nt
-        θ = step_population(θ, η, K, a_n, n, dt)
+        θ = step_population(θ, η, K, a_n, n, κ, dt)
         Θ_agg[:, i] = θ
     end
     return Θ_agg
