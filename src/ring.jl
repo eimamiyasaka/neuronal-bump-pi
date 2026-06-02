@@ -41,11 +41,19 @@ drive(θ, K, a_n, n) = coupling(pulse(θ, a_n, n), K)
 
 # --- One RK4 step of size dt ---
 function rk4_step(θ, η, dt)
-    k1 = thetadot(θ,            η)
-    k2 = thetadot(θ + 0.5dt*k1, η)
-    k3 = thetadot(θ + 0.5dt*k2, η)
-    k4 = thetadot(θ + dt*k3,    η)
+    k1 = thetadot.(θ,            η)
+    k2 = thetadot.(θ + 0.5dt*k1, η)
+    k3 = thetadot.(θ + 0.5dt*k2, η)
+    k4 = thetadot.(θ + dt*k3,    η)
     return θ + (dt/6) * (k1 + 2k2 + 2k3 + k4)
+end
+
+# --- One population RK4 step: advance all N phases by dt ---
+# I (coupling drive) is computed once from θ and held fixed across the 4 RK4 stages
+function step_population(θ, η, K, a_n, n, dt)
+    I = drive(θ, K, a_n, n)         # synaptic input felt by each neuron (length N)
+    θ_new = rk4_step(θ, η .+ I, dt) # total drive per neuron = intrinsic η + synaptic I
+    return mod.(θ_new, 2π)          # wrap each phase into [0, 2π)
 end
 
 # --- Simulate one neuron, return time, θ-trace, and spike times ---

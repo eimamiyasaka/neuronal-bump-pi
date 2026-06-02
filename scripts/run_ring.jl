@@ -29,6 +29,12 @@ function main()
             "   range: ", round(minimum(I), digits=4), " ... ", round(maximum(I), digits=4))
     # all-at-π => P constant => I should be nearly flat (cos part averages out)
 
+    # --- Test D3: one population step should move θ and stay finite ---
+    θ1 = step_population(θ_test, η, K, a_n, n, 0.01)
+    println("θ changed: ", θ1 != θ_test,
+            "   all finite: ", all(isfinite, θ1),
+            "   range: ", round(minimum(θ1), digits=3), " ... ", round(maximum(θ1), digits=3))
+
     # println(length(η) == N)
     # display(histogram(η))
 
