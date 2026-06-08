@@ -35,7 +35,7 @@ end
 pulse(θ, a_n, n) = a_n .* (1 .- cos.(θ)).^n
 
 # Coupling - turns the pulse field into the drive felt by every neuron
-coupling(P, K) = (K * P) ./ length(P)
+coupling(P, K) = (K * P) .* (2π / length(P))
 
 # Drive - composes pulse and coupling (called by dynamics)
 drive(θ, K, a_n, n) = coupling(pulse(θ, a_n, n), K)
