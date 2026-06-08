@@ -1,4 +1,5 @@
 include("../src/ring.jl")
+include("../src/field.jl")     # reuse the verified rate(z) for the empirical readout
 using Plots
 
 # Angular distance calculate (helper since neurons are on a ring)
@@ -53,15 +54,28 @@ function main()
 
     Θ_agg = simulate_population(θ0, η, K, a_n, n, κ; T=50.0, dt=0.01)
 
-    # Readout: activity heatmap (neuron on y, time on x)
+    # Macroscopic readout: smoothed local order parameter z(x) = <e^{-iθ}>, from
+    # which firing rate r(x)=rate(z) and synchrony |z|(x) follow — the quantities
+    # that actually distinguish a localized bump from a flooded ring.
+    half = 16                              # smoothing half-window (≈ N/32 at N=512)
+    z = local_order_parameter(Θ_agg[:, end], half)
+    r = rate.(z)
+    zabs = abs.(z)
+
+    p_r = plot(x, r, xlabel="position x", ylabel="firing rate r(x)",
+               title="empirical bump profile (smoothed z)", legend=false)
+    p_z = plot(x, zabs, xlabel="position x", ylabel="|z(x)|",
+               title="local synchrony |z|", legend=false)
+    # raw per-neuron activity heatmap (kept for reference; cannot show bump vs flood)
     activity = 1 .- cos.(Θ_agg)
-    h = heatmap(activity, xlabel="time step", ylabel="neuron",
-                title="bump activity (1 - cos θ)")
+    p_act = heatmap(activity, xlabel="time step", ylabel="neuron",
+                    title="raw activity (1 - cos θ)")
+    h = plot(p_r, p_z, p_act, layout=(3, 1), size=(700, 900))
     display(h)
     savefig(h, joinpath("figures", "d4_bump.png"))
     println("D4 done: Θ_agg size ", size(Θ_agg),
-            "   activity range ", round(minimum(activity), digits=3),
-            " ... ", round(maximum(activity), digits=3))
+            "   r(x) range ", round(minimum(r), digits=3), " ... ", round(maximum(r), digits=3),
+            "   |z| range ", round(minimum(zabs), digits=3), " ... ", round(maximum(zabs), digits=3))
 
     return x, η, K   # hand back for later steps
 end

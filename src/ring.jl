@@ -63,6 +63,23 @@ function step_population(θ, η, K, a_n, n, κ, dt; Iext=0.0)
     return mod.(θ_new, 2π)               # wrap each phase into [0, 2π)
 end
 
+# Smoothed local order parameter z(x) = <e^{-iθ}>, averaged over a window of ±half
+# neighbouring neurons on the ring (neurons are position-ordered). Matches the
+# field's convention z = <e^{-iθ}>, so |z| and rate(z) are comparable to field.jl.
+function local_order_parameter(θ, half)
+    N = length(θ)
+    e = exp.(-im .* θ)
+    z = similar(e)
+    for j in 1:N
+        acc = 0.0 + 0.0im
+        for d in -half:half
+            acc += e[mod1(j + d, N)]      # mod1 wraps the index around the ring
+        end
+        z[j] = acc / (2half + 1)
+    end
+    return z
+end
+
 # --- Simulate population of neurons ---
 function simulate_population(θ0, η, K, a_n, n, κ; T=100.0, dt=0.01)
     nt = round(Int, T/dt)
