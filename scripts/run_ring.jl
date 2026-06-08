@@ -58,7 +58,7 @@ function main()
     h = heatmap(activity, xlabel="time step", ylabel="neuron",
                 title="bump activity (1 - cos θ)")
     display(h)
-    # savefig(h, "d4_bump.png")
+    savefig(h, joinpath("figures", "d4_bump.png"))
     println("D4 done: Θ_agg size ", size(Θ_agg),
             "   activity range ", round(minimum(activity), digits=3),
             " ... ", round(maximum(activity), digits=3))
