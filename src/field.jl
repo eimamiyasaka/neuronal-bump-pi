@@ -36,7 +36,7 @@ field_kernel(x; B=0.0) = 0.1 .+ 0.3 .* cos.(x) .+ B .* sin.(x)
 # Khat = fft(field_kernel(x)) is precomputed once (kernel is time-independent).
 function coupling_field(z, Khat)
     P = meanpulse.(z)
-    return real(ifft(Khat .* fft(P))) ./ length(z)
+    return real(ifft(Khat .* fft(P))) .* (2π / length(z))
 end
 
 # Field right-hand side: ż at every grid point. Iext is an optional external

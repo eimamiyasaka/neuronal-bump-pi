@@ -34,8 +34,8 @@ end
 
 function main()
     Nx = 256
-    Δ  = 0.01         # heterogeneity sweet-spot: Δ≲0.015 → oscillon (gamma) regime;
-                       # Δ≳0.04 floods the surround. Δ≈0.02 gives a STATIC bump.
+    Δ  = 0.01         
+    
     x  = field_positions(Nx)
 
     # ---- V1: validate the reduction on a single population ----
