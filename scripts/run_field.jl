@@ -69,7 +69,7 @@ function main()
     p2 = heatmap(rate.(Zf), xlabel="time step", ylabel="grid point",
                  title="r(x,t) after release")
     fig = plot(p1, p2, layout=(2, 1), size=(700, 700))
-    savefig(fig, joinpath(@__DIR__, "field_bump.png"))
+    savefig(fig, joinpath("figures", "field_bump.png"))
     println("  saved field_bump.png")
 
     # ---- B2: map the bump regime over (η̄, κ) ----
