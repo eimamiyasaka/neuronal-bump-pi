@@ -52,9 +52,12 @@ function main()
     # ---- B1: solve for a bump at a representative operating point ----
     η̄, κ = -0.4, 2.0
     Khat = fft(field_kernel(x))                     # symmetric kernel (B = 0)
-    # release long enough for high-spatial-frequency grid residual to damp out
-    # (the macroscopic bump converges almost immediately; the per-point residual
-    #  is only damped by Δ, so it needs T≳200 to settle visually)
+    # release long enough for the high-spatial-frequency transient to damp out.
+    # The OA field has no spatial diffusion, so perturbations decay only at rate
+    # ~Δ; at Δ=0.01 that means T_free ≳ 1000 (~10/Δ) for a clean static bump 
+    # (T_free could probably be less, just needs enough time to damp out). The
+    # macroscopic amplitude converges fast; the high-k "fishbone" is the slow part
+    # — and it is a transient, NOT an oscillon.
     Zf = kick_then_release(x, η̄, Δ, κ, Khat; T_free=1000.0)
     rmax, rmin, width, xc, isb = bump_metrics(x, Zf[:, end])
     println("\n== representative bump  (η̄=$η̄, κ=$κ) ==")
@@ -75,12 +78,12 @@ function main()
     # ---- B2: map the bump regime over (η̄, κ) ----
     println("\n== bump regime map (kick-then-release; ✓ = stable bump w/ silent surround) ==")
     η̄s = (-0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0)
-    κs = (4.0, 6.0, 8.0, 10.0, 12.0, 14.0)
+    κs = (0.5, 1.0, 1.5, 2.0, 2.5, 3.0)         # coupling gain α; Laing Fig.1 uses α=2
     print(rpad("η̄ \\ κ", 8)); for κ in κs; print(rpad(κ, 7)); end; println()
     for η̄v in η̄s
         print(rpad(η̄v, 8))
         for κv in κs
-            Z = kick_then_release(x, η̄v, Δ, κv, Khat; T_free=60.0)
+            Z = kick_then_release(x, η̄v, Δ, κv, Khat; T_free=150.0)
             _, rmin, _, _, isb = bump_metrics(x, Z[:, end])
             print(rpad(isb ? "✓" : (rmin >= 0.02 ? "flood" : "·"), 7))
         end
