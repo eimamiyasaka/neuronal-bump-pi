@@ -1,4 +1,4 @@
-include("../src/ring.jl")
+include("../src/single.jl")
 using Plots
 
 # --- Test 1: suprathreshold, should spike periodically ---

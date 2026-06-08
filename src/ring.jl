@@ -1,8 +1,9 @@
 using Random
 
-# --- Theta-neuron right-hand side ---
-# θ̇ = (1 - cos θ) + (1 + cos θ) * η
-thetadot(θ, η) = (1-cos(θ)) + (1 + cos(θ)) * η
+# Shared theta-neuron model: `thetadot` (and the single-neuron helpers) live in
+# single.jl. Path is resolved relative to this file's directory, so it works no
+# matter which script includes ring.jl.
+include("single.jl")
 
 # Neuron positions on the ring [0, 2π]
 function make_positions(N)
@@ -39,15 +40,6 @@ coupling(P, K) = (K * P) ./ length(P)
 # Drive - composes pulse and coupling (called by dynamics)
 drive(θ, K, a_n, n) = coupling(pulse(θ, a_n, n), K)
 
-# --- One RK4 step of size dt ---
-function rk4_step(θ, η, dt)
-    k1 = thetadot.(θ,            η)
-    k2 = thetadot.(θ + 0.5dt*k1, η)
-    k3 = thetadot.(θ + 0.5dt*k2, η)
-    k4 = thetadot.(θ + dt*k3,    η)
-    return θ + (dt/6) * (k1 + 2k2 + 2k3 + k4)
-end
-
 # --- Full population right-hand side: dθ/dt for every neuron ---
 # The coupling I is recomputed from whatever state θ is handed in (it depends on
 # the whole state through the pulses), which is what makes the RK4 below a TRUE
@@ -69,27 +61,6 @@ function step_population(θ, η, K, a_n, n, κ, dt; Iext=0.0)
     k4 = population_rhs(θ .+ dt .* k3,  η, K, a_n, n, κ; Iext=Iext)
     θ_new = θ .+ (dt/6) .* (k1 .+ 2k2 .+ 2k3 .+ k4)
     return mod.(θ_new, 2π)               # wrap each phase into [0, 2π)
-end
-
-# --- Simulate one neuron, return time, θ-trace, and spike times ---
-function simulate_single(η; T=100.0, dt=0.01, θ0=0.0)
-    nt = round(Int, T/dt)
-    θ = θ0
-    ts     = Vector{Float64}(undef, nt)
-    θtrace = Vector{Float64}(undef, nt)
-    spikes = Float64[]
-
-    for i in 1:nt
-        θ_new = rk4_step(θ, η, dt)
-        # spike if θ crossed π upward during this step
-        if θ < π && θ_new >= π
-            push!(spikes, i*dt)
-        end
-        θ = mod(θ_new, 2π)
-        ts[i]     = i*dt
-        θtrace[i] = θ
-    end
-    return ts, θtrace, spikes
 end
 
 # --- Simulate population of neurons ---
