@@ -81,14 +81,16 @@ function local_order_parameter(θ, half)
 end
 
 # --- Simulate population of neurons ---
-function simulate_population(θ0, η, K, a_n, n, κ; T=100.0, dt=0.01)
+# Iext is an optional external drive held fixed across the run (scalar, or a
+# length-N vector for a localized bump-seeding kick); passed through to the stepper.
+function simulate_population(θ0, η, K, a_n, n, κ; T=100.0, dt=0.01, Iext=0.0)
     nt = round(Int, T/dt)
     N = length(θ0)
     Θ_agg = zeros(N, nt)        # storage: row = neuron, col = timestep
     θ = copy(θ0)            # evolving state vector
 
     for i in 1:nt
-        θ = step_population(θ, η, K, a_n, n, κ, dt)
+        θ = step_population(θ, η, K, a_n, n, κ, dt; Iext=Iext)
         Θ_agg[:, i] = θ
     end
     return Θ_agg
