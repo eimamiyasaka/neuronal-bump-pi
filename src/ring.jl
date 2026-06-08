@@ -48,12 +48,27 @@ function rk4_step(θ, η, dt)
     return θ + (dt/6) * (k1 + 2k2 + 2k3 + k4)
 end
 
+# --- Full population right-hand side: dθ/dt for every neuron ---
+# The coupling I is recomputed from whatever state θ is handed in (it depends on
+# the whole state through the pulses), which is what makes the RK4 below a TRUE
+# RK4 for the coupled network. Iext is an optional external drive (scalar or
+# length-N), e.g. a transient bump-seeding kick.
+function population_rhs(θ, η, K, a_n, n, κ; Iext=0.0)
+    I = drive(θ, K, a_n, n) .+ Iext      # synaptic input felt by each neuron (length N)
+    return thetadot.(θ, η .+ κ .* I)     # total drive per neuron = intrinsic η + κ·I
+end
+
 # --- One population RK4 step: advance all N phases by dt ---
-# I (coupling drive) is computed once from θ and held fixed across the 4 RK4 stages
-function step_population(θ, η, K, a_n, n, κ, dt)
-    I = drive(θ, K, a_n, n)         # synaptic input felt by each neuron (length N) - drive I depends on θ through the pulses, so it should later be recomputed inside each stage (!!!)
-    θ_new = rk4_step(θ, η .+ (κ .* I), dt) # total drive per neuron = intrinsic η + synaptic I
-    return mod.(θ_new, 2π)          # wrap each phase into [0, 2π)
+# Coupling is recomputed at every stage (not frozen at the stage-1 value). θ is
+# NOT wrapped between stages — thetadot/pulse use only cos θ (2π-periodic), so
+# unwrapped intermediate states give the correct RHS; only the final state wraps.
+function step_population(θ, η, K, a_n, n, κ, dt; Iext=0.0)
+    k1 = population_rhs(θ,              η, K, a_n, n, κ; Iext=Iext)
+    k2 = population_rhs(θ .+ 0.5dt.*k1, η, K, a_n, n, κ; Iext=Iext)
+    k3 = population_rhs(θ .+ 0.5dt.*k2, η, K, a_n, n, κ; Iext=Iext)
+    k4 = population_rhs(θ .+ dt .* k3,  η, K, a_n, n, κ; Iext=Iext)
+    θ_new = θ .+ (dt/6) .* (k1 .+ 2k2 .+ 2k3 .+ k4)
+    return mod.(θ_new, 2π)               # wrap each phase into [0, 2π)
 end
 
 # --- Simulate one neuron, return time, θ-trace, and spike times ---
