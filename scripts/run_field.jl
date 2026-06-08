@@ -34,7 +34,7 @@ end
 
 function main()
     Nx = 256
-    Δ  = 0.02         # heterogeneity sweet-spot: Δ≲0.015 → oscillon (gamma) regime;
+    Δ  = 0.01         # heterogeneity sweet-spot: Δ≲0.015 → oscillon (gamma) regime;
                        # Δ≳0.04 floods the surround. Δ≈0.02 gives a STATIC bump.
     x  = field_positions(Nx)
 
@@ -50,7 +50,7 @@ function main()
     end
 
     # ---- B1: solve for a bump at a representative operating point ----
-    η̄, κ = -0.3, 10.0
+    η̄, κ = -0.4, 2.0
     Khat = fft(field_kernel(x))                     # symmetric kernel (B = 0)
     # release long enough for high-spatial-frequency grid residual to damp out
     # (the macroscopic bump converges almost immediately; the per-point residual
@@ -67,7 +67,7 @@ function main()
     p1 = plot(x, rprof, xlabel="position x", ylabel="firing rate r(x)",
               title="released bump profile (η̄=$η̄, κ=$κ)", legend=false)
     p2 = heatmap(rate.(Zf), xlabel="time step", ylabel="grid point",
-                 title="r(x,t) after release")
+                 title="r(x,t) after release", clims=(0, maximum(rprof)))
     fig = plot(p1, p2, layout=(2, 1), size=(700, 700))
     savefig(fig, joinpath("figures", "field_bump.png"))
     println("  saved field_bump.png")
