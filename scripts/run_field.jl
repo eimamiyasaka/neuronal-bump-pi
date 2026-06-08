@@ -35,7 +35,7 @@ end
 function main()
     Nx = 256
     Δ  = 0.01         
-    
+
     x  = field_positions(Nx)
 
     # ---- V1: validate the reduction on a single population ----
@@ -55,7 +55,7 @@ function main()
     # release long enough for high-spatial-frequency grid residual to damp out
     # (the macroscopic bump converges almost immediately; the per-point residual
     #  is only damped by Δ, so it needs T≳200 to settle visually)
-    Zf = kick_then_release(x, η̄, Δ, κ, Khat; T_free=250.0)
+    Zf = kick_then_release(x, η̄, Δ, κ, Khat; T_free=1000.0)
     rmax, rmin, width, xc, isb = bump_metrics(x, Zf[:, end])
     println("\n== representative bump  (η̄=$η̄, κ=$κ) ==")
     println("  r_max=", round(rmax, digits=3), "  r_min=", round(rmin, digits=4),
