@@ -1,11 +1,7 @@
-include("../src/field.jl")
+include("../src/field.jl")     # provides rate, arg_laing, angular_distance, etc.
+include("plotting.jl")         # pi_ticks, wrap_extend, to_02pi, break_wraps
 using Plots
-
-# Angular distance on the ring (helper for the seeding kick)
-function angular_distance(x, x0)
-    d = abs.(x .- x0)
-    return min.(d, 2π .- d)
-end
+using Plots.PlotMeasures       # for mm margins
 
 # Seed a bump with a transient localized external input, then release the network
 # and let it relax freely. Returns the order-parameter field after release.
@@ -65,15 +61,38 @@ function main()
             "  width=", width, "/", Nx, "  center=", round(xc, digits=3),
             "  bump=", isb)
 
-    # bump profile + space-time firing-rate map
-    rprof = rate.(Zf[:, end])
-    p1 = plot(x, rprof, xlabel="position x", ylabel="firing rate r(x)",
-              title="released bump profile (η̄=$η̄, κ=$κ)", legend=false)
-    p2 = heatmap(rate.(Zf), xlabel="time step", ylabel="grid point",
-                 title="r(x,t) after release", clims=(0, maximum(rprof)))
-    fig = plot(p1, p2, layout=(2, 1), size=(700, 700))
-    savefig(fig, joinpath("figures", "field_bump.png"))
-    println("  saved field_bump.png")
+    # ---- COMPARISON figure: the 3-panel bump profile (Laing Fig. 1 rows 2–4) ----
+    # These are exactly the quantities run_ring.jl reports, so they overlay 1:1 in
+    # the eventual micro/macro gate (run_compare). arg z uses arg_laing so the sign
+    # matches the paper (our z = <e^{-iθ}> is the conjugate of theirs — see field.jl).
+    zf    = Zf[:, end]
+    rprof = rate.(zf)
+    zargp = break_wraps(to_02pi.(arg_laing.(zf)))   # arg in [0,2π); break the 0↔2π seam
+    xt = pi_ticks(2π)                               # π-scaled x-axis (field spans 0..2π)
+    yt = pi_ticks(2π)                               # π-scaled y-axis for arg (0..2π)
+    # rate fixed to Laing's static Fig.1 scale (0–0.5); revisit to (0,5) for moving bumps
+    p_r = plot(x, rprof, xlabel="position x", ylabel="firing rate r",
+               title="bump profile", legend=false, ylims=(0, 0.5),
+               xticks=xt, left_margin=8mm)
+    p_z = plot(x, abs.(zf), xlabel="position x", ylabel="|z|",
+               title="synchrony |z|", legend=false, ylims=(0, 1),
+               xticks=xt, left_margin=8mm)
+    p_a = plot(x, zargp, xlabel="position x", ylabel="arg(z)",
+               title="mean phase arg(z)", legend=false, ylims=(0, 2π),
+               xticks=xt, yticks=yt, left_margin=8mm)
+    display(p_r); display(p_z); display(p_a)        # individual panels (REPL)
+    fig = plot(p_r, p_z, p_a, layout=(3, 1), size=(700, 900))
+    savefig(fig, joinpath("figures", "field_profile.png"))
+    println("  saved field_profile.png")
+
+    # ---- ANALYSIS figure: persistence / stationarity (NOT the profile) ----
+    # Space-time firing-rate map after release: shows the bump is stationary and
+    # persists (a ring attractor), which the single-time profile above cannot.
+    persist = heatmap(rate.(Zf), xlabel="time step", ylabel="grid point",
+                      title="r(x,t) after release (persistence)", clims=(0, maximum(rprof)))
+    display(persist)
+    savefig(persist, joinpath("figures", "field_persistence.png"))
+    println("  saved field_persistence.png")
 
     # ---- B2: map the bump regime over (η̄, κ) ----
     println("\n== bump regime map (kick-then-release; ✓ = stable bump w/ silent surround) ==")

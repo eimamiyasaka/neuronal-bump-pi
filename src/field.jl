@@ -12,16 +12,38 @@ using FFTW
 # OA ansatz, and integrate over the Lorentzian η (median η̄, HWHM Δ) by closing
 # the contour at the pole η = η̄ − iΔ. See notes/project.md §4.
 #
+# CONVENTION (matters for comparison to the paper): we track z = <e^{-iθ}>, which
+# is the complex CONJUGATE of Laing & Omel'chenko's z = <e^{+iθ}> (their Eq. 5).
+# The equation above is the exact conjugate of their Eq. 5, so |z| and the firing
+# rate are IDENTICAL to theirs; only arg z is sign-flipped. Negate arg z (see
+# `arg_laing`) when overlaying on their Fig. 1/2 row 4.
+#
 # Readouts (closed form in z):
-#   firing rate   r = (1/π) Re[(1-z)/(1+z)]
-#   mean pulse    P̄ = a_n <(1-cosθ)^n>     (used for the coupling)
+#   firing rate   r = (1/π) Re[(1-z)/(1+z)]     (Laing Eq. 9)
+#   mean pulse    P̄ = a_n <(1-cosθ)^n>          (used for the coupling, Laing Eq. 2)
 # ============================================================================
 
 # Grid of Nx evenly spaced positions on the ring [0, 2π)
 field_positions(Nx) = [2π*(j-1)/Nx for j in 1:Nx]
 
-# Population firing rate from the order parameter (flux through θ = π)
+# Population firing rate from the order parameter: the flux of neurons through
+# θ = π. This is Laing & Omel'chenko Eq. (9) — the *instantaneous* frequency
+# f(x,t). They write it as (1/π)Re[(1-z̄)/(1+z̄)] for their z = <e^{+iθ}>; since
+# our z = <e^{-iθ}> is their z̄, (1-z)/(1+z) here equals their (1-z̄)/(1+z̄), so
+# this returns exactly the same number.
 rate(z) = (1/π) * real((1 - z) / (1 + z))
+
+# Argument of z in Laing & Omel'chenko's convention (z = <e^{+iθ}>). Our z is the
+# conjugate <e^{-iθ}>, so arg flips sign; negate to plot/compare against their
+# Fig. 1/2 row 4. (|z| and rate(z) need no such correction — see header.)
+arg_laing(z) = -angle(z)
+
+# Angular (shortest-arc) distance on the ring [0, 2π). Shared by the seeding
+# kicks in both run_field.jl and run_ring.jl (both `include` this file).
+function angular_distance(x, x0)
+    d = abs.(x .- x0)
+    return min.(d, 2π .- d)
+end
 
 # Mean pulse P̄ = a_n <(1-cosθ)^n>, written in z for n = 2 (a_2 = 2/3):
 #   <(1-cosθ)²> = 3/2 − 2 Re z + (1/2) Re z²   ⇒   P̄ = 1 − (4/3)Re z + (1/3)Re z²
