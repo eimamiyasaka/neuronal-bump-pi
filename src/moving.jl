@@ -124,7 +124,7 @@ end
 # Returns (speeds aligned with Bs, final field state) — the final state lets a
 # backward sweep continue from where a forward sweep ended (the natural way to
 # close the hysteresis loop). Cheap: 256-point grid, so a fine Bs is fine.
-function bsweep_field(Bs, x, η̄, Δ, κ, z_start; T=200.0, dt=0.02, frac=0.5)
+function bsweep_field(Bs, x, η̄, Δ, κ, z_start; T=200.0, dt=0.02, frac=0.5, tag="field", every=0)
     cosx, sinx = cos.(x), sin.(x)
     s = Vector{Float64}(undef, length(Bs))
     z = copy(z_start)
@@ -132,6 +132,10 @@ function bsweep_field(Bs, x, η̄, Δ, κ, z_start; T=200.0, dt=0.02, frac=0.5)
         Khat = fft(field_kernel(x; B=B))                       # kernel changes only via B
         xc, z = track_field_centroid(z, η̄, Δ, κ, Khat, cosx, sinx; T=T, dt=dt)
         s[i] = lateral_speed(xc, dt; frac=frac)
+        # optional flushed progress so a long sweep is observable in a redirected log
+        if every > 0 && (i % every == 0 || i == length(Bs))
+            println("  [$tag] $i/$(length(Bs))  B=", round(B, digits=4), "  s=", round(s[i], digits=4)); flush(stdout)
+        end
     end
     return s, z
 end
@@ -143,13 +147,16 @@ end
 # with Bs, final phase state) — same chaining contract as bsweep_field. This is the
 # expensive side (N neurons × nt steps × |Bs|) — keep Bs coarse unless reproducing
 # the paper exactly.
-function bsweep_ring(Bs, x, η, a_n, n, κ, θ_start; T=200.0, dt=0.02, frac=0.5)
+function bsweep_ring(Bs, x, η, a_n, n, κ, θ_start; T=200.0, dt=0.02, frac=0.5, tag="ring", every=0)
     s = Vector{Float64}(undef, length(Bs))
     θ = copy(θ_start)
     for (i, B) in enumerate(Bs)
         K = make_kernel(x; B=B)                                # rank-3 kernel, O(N) to build
         xc, θ = track_ring_centroid(θ, η, K, a_n, n, κ; T=T, dt=dt)
         s[i] = lateral_speed(xc, dt; frac=frac)
+        if every > 0 && (i % every == 0 || i == length(Bs))
+            println("  [$tag] $i/$(length(Bs))  B=", round(B, digits=4), "  s=", round(s[i], digits=4)); flush(stdout)
+        end
     end
     return s, θ
 end
