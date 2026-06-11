@@ -90,6 +90,14 @@ function main()
     println("hysteresis gap (max |forward − backward|):  field=", round(gapF, digits=4),
             "   spiking=", round(gapR, digits=4),
             gapF > 0.02 ? "   → hysteresis present" : "   → no hysteresis detected (raise T_sweep / refine ΔB)")
+    # (iv) micro/macro closure: the spiking B-grid (ΔB_ring) is a subset of the field
+    # grid (ΔB_field) when ΔB_ring is an integer multiple, so compare on the common B.
+    if isinteger(round(ΔB_ring / ΔB_field; digits=6))
+        step = round(Int, ΔB_ring / ΔB_field)
+        dmicromacro = maximum(abs.(sR_fwd .- sF_fwd[1:step:end]))
+        println("micro/macro speed agreement (max |spiking − field|, forward sweep): ",
+                round(dmicromacro, digits=4), "  → closure", dmicromacro < 0.05 ? " OK" : " LOOSE (check settling)")
+    end
 
     # =============== FIELD travelling-wave CONTINUATION (the solid curve) ===========
     # Newton + PSEUDO-ARCLENGTH continuation of the exact travelling-wave equation — the
