@@ -59,9 +59,12 @@ function main()
     # rng seeded so the η draw is reproducible across runs (as in run_ring.jl)
     η = make_excitabilities(N, η̄, Δ; rng=Random.MersenneTwister(1))
 
-    # Settle a motionless B = 0 bump ONCE on each side, then continue it to each
-    # target B (warm-start, exactly as the sweep does — this lands on the moving-
-    # bump branch rather than gambling that a kick forms a bump at large B directly).
+    # Settle a motionless B = 0 bump ONCE on each side. Each target B below is then
+    # reached by a SINGLE STEP from this same B=0 bump (kernel switched 0→B directly),
+    # NOT warm-started from the previous B and NOT ramped through intermediate B — so
+    # this is NOT the sweep's continuation (bsweep_* carries state B-to-B; §6). Reusing
+    # the formed B=0 bump (rather than re-kicking at large B) is all that "lands on the
+    # moving branch" means here; there is no path dependence between the three columns.
     Khat0 = fft(field_kernel(xf))                  # B = 0
     K0    = make_kernel(xr)                         # B = 0
     zf0 = seed_field_bump(xf, η̄, Δ, κ, Khat0; dt=dt)
@@ -77,7 +80,7 @@ function main()
     rate_ps = Plots.Plot[]; absz_ps = Plots.Plot[]; arg_ps = Plots.Plot[]
 
     for B in Bs
-        # ---- field: continue the B=0 bump to this B; T=300 settles then measures ----
+        # ---- field: step the B=0 bump to this B (from zf0 each time); T=300 settles then measures ----
         KhatB = fft(field_kernel(xf; B=B))
         xcF, zF = track_field_centroid(zf0, η̄, Δ, κ, KhatB, cos.(xf), sin.(xf); T=300.0, dt=dt)
         sF = lateral_speed(xcF, dt; frac=0.5)
@@ -95,7 +98,7 @@ function main()
         push!(arg_ps,  plot(xf, gdisp, ylabel="arg(z)", xlabel="x", legend=false,
                             ylims=(0, 2π), xticks=xt, yticks=yt, left_margin=6mm))
 
-        # ---- spiking net: continue the B=0 bump to this B; snapshot θ_k ----
+        # ---- spiking net: step the B=0 bump to this B (from θr0 each time); snapshot θ_k ----
         KB = make_kernel(xr; B=B)
         xcR, θR = track_ring_centroid(θr0, η, KB, a_n, n, κ; T=300.0, dt=dt)
         sR = lateral_speed(xcR, dt; frac=0.5)

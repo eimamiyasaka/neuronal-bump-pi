@@ -6,6 +6,10 @@
 # s(B): the forward and backward sweeps trace different branches because moving
 # bumps are multistable (the bifurcation scenario Laing analyses by continuation).
 #
+# On top of the direct-simulation MARKERS, the field travelling-wave branch is traced
+# analytically by Newton continuation (src/continuation.jl) — the solid curve of
+# Fig. 3. Three figures are produced: field only, spiking only, and the two overlaid.
+#
 # Operating point: Δ = 0.1, κ = 2, η̄ = −0.4, n = 2  (Laing Fig. 3).
 #
 # COST. The cost knobs below default LIGHT so the script returns in minutes; raise
@@ -13,8 +17,9 @@
 # curve. The spiking sweep is the expensive side (N neurons × steps × |Bs|), so it
 # uses a coarser B-grid than the cheap 256-point field.
 
-include("../src/moving.jl")    # bsweep_field, bsweep_ring, seed_field_bump, seed_ring_bump
-include("plotting.jl")         # (shared presentation helpers; unused ticks here but kept consistent)
+include("../src/moving.jl")        # bsweep_field, bsweep_ring, seed_field_bump, seed_ring_bump
+include("../src/continuation.jl")  # tw_continuation — the field travelling-wave s(B) curve
+include("plotting.jl")             # (shared presentation helpers; kept consistent across scripts)
 using Plots
 using Plots.PlotMeasures
 
@@ -28,12 +33,14 @@ function main()
     dt = 0.02                      # Laing's integrator step
 
     # --- cost knobs (LIGHT defaults; paper-faithful values in comments) ---
-    # Each sweep WARM-STARTS from the previous B's settled state, so a single ΔB
-    # step is a tiny perturbation that re-settles within ~5/Δ ≈ 50 t.u. at Δ=0.1 —
-    # there is no need to re-settle from scratch per B. Hence T_sweep can be short
-    # (≪ the paper's 2000, which it pays because it re-runs each B independently).
-    # The measurement window (last frac·T_sweep) still spans many bump traversals
-    # at these speeds (s·50 ≈ several full laps), so the mean speed is well sampled.
+    # Each sweep WARM-STARTS from the previous B's settled state (as the paper does
+    # too — the forward/backward hysteresis only exists because the bump is carried
+    # over between B values), so a single ΔB step is a tiny perturbation that
+    # re-settles within ~5/Δ ≈ 50 t.u. at Δ=0.1. Hence T_sweep can be short: the
+    # only Cut here vs the paper is the per-step integration time (100 vs its 2000),
+    # not the warm-start. The paper's 2000 is conservative — robustness near folds
+    # and where s≈0 — not a structural need. The measurement window (last frac·T_sweep)
+    # still spans many bump traversals (s·50 ≈ several full laps), so s is well sampled.
     ΔB_field = 0.005               # field B-grid step          (paper: 0.001)
     ΔB_ring  = 0.01                # spiking B-grid step (coarser; expensive side)
     T_sweep  = 100.0               # integrate per B (warm-started) (paper: 2000)
@@ -84,19 +91,44 @@ function main()
             "   spiking=", round(gapR, digits=4),
             gapF > 0.02 ? "   → hysteresis present" : "   → no hysteresis detected (raise T_sweep / refine ΔB)")
 
-    # ---- FIGURE: s vs B, both models, both sweep directions (recreates Fig. 3) ----
-    # Forward = crosses, backward = circles (the paper's marker convention).
-    p = plot(xlabel="B  (asymmetry)", ylabel="s  (lateral speed)",
-             title="moving-bump speed s(B):  Δ=$Δ, κ=$κ, η̄=$η̄, n=$n",
-             legend=:topleft, xlims=(0, Bmax), left_margin=8mm, bottom_margin=6mm)
-    scatter!(p, Bs_field, sF_fwd, m=:xcross, mc=:red,  ms=3, label="field, forward")
-    scatter!(p, Bs_field, sF_bwd, m=:circle, mc=:blue, ms=3, label="field, backward")
-    scatter!(p, Bs_ring,  sR_fwd, m=:xcross, mc=:darkred, ms=4, label="spiking, forward")
-    scatter!(p, Bs_ring,  sR_bwd, m=:circle, mc=:navy,    ms=4, label="spiking, backward")
-    display(p)
-    savefig(p, joinpath("figures", "sweep_speed.png"))
-    println("\nsaved sweep_speed.png")
+    # =============== FIELD travelling-wave CONTINUATION (the solid curve) ===========
+    # Newton + PSEUDO-ARCLENGTH continuation of the exact travelling-wave equation — the
+    # analytic branch the markers only sample. From a SINGLE seed it follows one connected
+    # branch through both folds (the B-fold and the knot at B≈0.1, s≈0.85), so the curve
+    # is CONTINUOUS — the solid curve of Laing Fig. 3, no NaN gap (see src/continuation.jl).
+    println("\n== field travelling-wave continuation =="); flush(stdout)
+    Bc, sc = tw_continuation(Nx, η̄, Δ, κ)   # defaults: Δarc=0.02, wprof=0.01
 
+    # ---- FIGURES: s vs B (recreates Laing Fig. 3 / notes/image3.png) ----
+    # Forward sweep = crosses, backward = circles (the paper's marker convention);
+    # solid black = field continuation. Three figures: field only, spiking only, and
+    # the two overlaid. `add_continuation!` and the marker helpers keep them identical.
+    addcont!(p) = plot!(p, Bc, sc, lc=:black, lw=2, label="field continuation")
+    base(title) = plot(xlabel="B  (asymmetry)", ylabel="s  (lateral speed)", title=title,
+                       legend=:topleft, xlims=(0, Bmax), ylims=(0, 1.35),
+                       left_margin=8mm, bottom_margin=6mm)
+
+    p_field = base("moving-bump speed s(B) — field")
+    scatter!(p_field, Bs_field, sF_fwd, m=:xcross, mc=:red,  ms=3, label="field, forward")
+    scatter!(p_field, Bs_field, sF_bwd, m=:circle, mc=:blue, ms=3, label="field, backward")
+    addcont!(p_field)
+    savefig(p_field, joinpath("figures", "sweep_speed_field.png"))
+
+    p_ring = base("moving-bump speed s(B) — spiking")
+    scatter!(p_ring, Bs_ring, sR_fwd, m=:xcross, mc=:darkred, ms=4, label="spiking, forward")
+    scatter!(p_ring, Bs_ring, sR_bwd, m=:circle, mc=:navy,    ms=4, label="spiking, backward")
+    addcont!(p_ring)
+    savefig(p_ring, joinpath("figures", "sweep_speed_spiking.png"))
+
+    p_all = base("moving-bump speed s(B) — field vs spiking")
+    scatter!(p_all, Bs_field, sF_fwd, m=:xcross, mc=:red,  ms=3, label="field, forward")
+    scatter!(p_all, Bs_field, sF_bwd, m=:circle, mc=:blue, ms=3, label="field, backward")
+    scatter!(p_all, Bs_ring,  sR_fwd, m=:xcross, mc=:darkred, ms=4, label="spiking, forward")
+    scatter!(p_all, Bs_ring,  sR_bwd, m=:circle, mc=:navy,    ms=4, label="spiking, backward")
+    addcont!(p_all)
+    savefig(p_all, joinpath("figures", "sweep_speed.png"))
+
+    println("saved sweep_speed_field.png, sweep_speed_spiking.png, sweep_speed.png")
     return nothing
 end
 
