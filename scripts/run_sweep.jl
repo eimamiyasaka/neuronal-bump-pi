@@ -106,6 +106,12 @@ function main()
     # is CONTINUOUS — the solid curve of Laing Fig. 3, no NaN gap (see src/continuation.jl).
     println("\n== field travelling-wave continuation =="); flush(stdout)
     Bc, sc = tw_continuation(Nx, η̄, Δ, κ)   # defaults: Δarc=0.02, wprof=0.01
+    # persist the continuation curve as data (NaN row separates the two branches);
+    # scripts/digitize_fig3.py compares this against the digitized Laing Fig. 3.
+    open(joinpath("figures", "continuation_bs.csv"), "w") do io
+        println(io, "B,s")
+        for i in eachindex(Bc); println(io, Bc[i], ",", sc[i]); end
+    end
 
     # ---- FIGURES: s vs B (recreates Laing Fig. 3 / notes/image3.png) ----
     # Forward sweep = crosses, backward = circles (the paper's marker convention);
