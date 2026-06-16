@@ -87,7 +87,7 @@ function draw_ring!(plt, angles, act, clim, dec, tru, ttl; showlegend=false)
     plot!(plt, [0, 0.96cos(tru)], [0, 0.96sin(tru)]; lc=:white, lw=2, ls=:dot,
           label="true heading")                                                # true
     plot!(plt, [0, 0.9cos(dec)],  [0, 0.9sin(dec)];  lc=:cyan,  lw=3,
-          label="decoded (bump)")                                              # decoded
+          label="decoded bump")                                               # decoded
     scatter!(plt, [0.9cos(dec)], [0.9sin(dec)]; mc=:cyan, ms=5, markerstrokewidth=0, label="")
     plot!(plt; xlims=(-1.35, 1.35), ylims=(-1.35, 1.35), aspect_ratio=1,
           framestyle=:none, background_color_inside=:black,
@@ -130,7 +130,7 @@ function main()
         pf = plot(); draw_ring!(pf, αF, d.R[:, k], Rclim, d.φF[k], d.Φ[k],
                                 "field bump  (macroscopic)"; showlegend=true)
         pr = plot(); draw_ring!(pr, αR, d.A[:, k], Aclim, d.φR[k], d.Φ[k],
-                                "spiking bump  (N=8192)")
+                                "spiking bump  (N=8192)"; showlegend=true)
 
         ph = plot(d.ts[1:k], d.Φ[1:k]; lc=:black, lw=2, label="true ∫Ω dt",
                   title="decoded heading tracks the truth", titlefontsize=10,
