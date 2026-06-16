@@ -100,6 +100,74 @@ function drive_ring(θ0, η, x, a_n, n, κ, Bfun; a0=0.1, a1=0.3, T=200.0, dt=0.
 end
 
 # ============================================================================
+# Profile-recording drivers (for the visualization in scripts/animate_ring.jl).
+#
+# Identical dynamics to drive_field/drive_ring above — same stage-time RK4 steppers,
+# no new physics — but they additionally save the full SPATIAL ACTIVITY PROFILE every
+# `stride` steps so the moving bump can be drawn, not just its centroid. The scalar
+# outputs (ts, centroid) match drive_field/drive_ring sampled on the frame grid, so an
+# animation built from these is the same run the CSVs came from.
+# ============================================================================
+
+# Field: record the firing-rate profile rate(z) at each frame. Returns the frame time
+# grid, an (Nx × nframes) matrix of rate profiles, and the centroid series.
+function drive_field_record(z0, η̄, Δ, κ, x, Bfun; T=200.0, dt=0.02, stride=25)
+    Khat0 = fft(field_kernel(x; B=0.0))
+    Shat  = fft(sin.(x))
+    cosx, sinx = cos.(x), sin.(x)
+    nt = round(Int, T/dt)
+    nf = fld(nt, stride)
+    z  = copy(z0)
+    ts = Vector{Float64}(undef, nf)
+    xc = Vector{Float64}(undef, nf)
+    R  = Matrix{Float64}(undef, length(x), nf)      # rate profile per frame
+    f  = 0
+    for i in 1:nt
+        t = (i - 1) * dt
+        z = field_step_tv(z, t, η̄, Δ, κ, Khat0, Shat, Bfun, dt)
+        if i % stride == 0
+            f += 1
+            r = rate.(z)
+            R[:, f] = r
+            ts[f] = i * dt
+            xc[f] = bump_centroid(r, cosx, sinx)
+        end
+    end
+    return ts, R, xc
+end
+
+# Spiking net: record a SMOOTHED pulse-activity profile (the firing-intensity bump),
+# downsampled to `ndisp` display points so 8192 neurons render cheaply. `half` is the
+# ring_smooth half-window. Returns the frame times, the display angle grid, an
+# (ndisp × nframes) activity matrix, and the centroid (from the full, unsmoothed pulse).
+function drive_ring_record(θ0, η, x, a_n, n, κ, Bfun;
+                           a0=0.1, a1=0.3, T=200.0, dt=0.02, stride=25, ndisp=256, half=256)
+    cosx, sinx = cos.(x), sin.(x)
+    N  = length(θ0)
+    idx = collect(1:max(1, fld(N, ndisp)):N)        # display neuron indices
+    xdisp = x[idx]
+    nt = round(Int, T/dt)
+    nf = fld(nt, stride)
+    θ  = copy(θ0)
+    ts = Vector{Float64}(undef, nf)
+    xc = Vector{Float64}(undef, nf)
+    A  = Matrix{Float64}(undef, length(idx), nf)    # smoothed pulse activity per frame
+    f  = 0
+    for i in 1:nt
+        t = (i - 1) * dt
+        θ = step_population_tv(θ, t, η, cosx, sinx, a0, a1, a_n, n, κ, Bfun, dt)
+        if i % stride == 0
+            f += 1
+            P = pulse(θ, a_n, n)
+            A[:, f] = ring_smooth(P, half)[idx]
+            ts[f] = i * dt
+            xc[f] = bump_centroid(P, cosx, sinx)
+        end
+    end
+    return ts, xdisp, A, xc
+end
+
+# ============================================================================
 # Angular-velocity command library — each returns a closure Ω: t ↦ Ω(t).
 # Compose with Bfun_from_omega to get the kernel-level B(t) the drivers consume.
 # ============================================================================
