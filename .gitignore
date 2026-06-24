@@ -1,3 +1,14 @@
 notes/
 figures/ring_attractor.mp4
 CLAUDE.md
+
+# AUTO-07p build/scratch (keep sources: *.f90, c.*, *.py, *.sh, *.dat, *.csv, README.md)
+auto/fort.*
+auto/*.o
+auto/*.exe
+auto/*.mod
+auto/b.*
+auto/s.*
+auto/d.*
+auto/_*.log
+auto/__pycache__/
