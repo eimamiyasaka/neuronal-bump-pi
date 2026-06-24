@@ -1,0 +1,5 @@
+0.05 bump_init_D050.dat
+0.07 bump_init_D070.dat
+0.1 bump_init_D100.dat
+0.13 bump_init_D130.dat
+0.16 bump_init_D160.dat
