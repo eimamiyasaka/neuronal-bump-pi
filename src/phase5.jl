@@ -68,12 +68,16 @@ end
 # In darkness (Ω=0, B=0) the EXACT field bump is translation-marginal — it does not
 # drift (a control). The finite-N spiking bump wanders because the FROZEN-η realization
 # breaks the ring's translation symmetry into a fixed quenched potential, whose gradient
-# pushes the bump at a realization-specific rate. That symmetry-breaking force is a sum of
-# N ~independent O(1/N) contributions ⇒ by the CLT it is O(N^−1/2), so the per-realization
-# drift RATE is mean-zero with RMS ∝ N^−1/2 (the same 1/√N envelope a Kilpatrick–Ermentrout
-# finite-size diffusion would give; here the quenched drift dominates and is the robust,
-# directly measurable quantity — a per-realization MSD split into quenched-vs-diffusive parts
-# is NOT reliably resolvable from a few seeds, so we report the drift-rate statistics directly).
+# pushes the bump at a realization-specific rate.
+#
+# SCALING (corrected — see step5_gate.md and the adjoint analysis in src/drift_adjoint.jl):
+# this is NOT the light-tailed 1/√N CLT envelope. η is Cauchy/Lorentzian (the distribution
+# that makes OA exact), heavy-tailed with NO finite variance. The phase-reduction drift law
+# (Nakao 2014 adjoint) makes the per-realization drift rate a LINEAR functional of the
+# quenched disorder, drift ≈ Σ_b S_η(x_b)·δη_b; a linear combination of Cauchy variables is
+# itself Cauchy (a stable law), so the drift is Cauchy with an N-INDEPENDENT scale ∝ Δ·∫|S_η|
+# — heavy-tailed and outlier-dominated, not concentrating as N grows. We therefore report the
+# drift-rate statistics directly (scatter + median) rather than impose a spurious 1/√N fit.
 #
 # Given S unwrapped, zero-started heading series φ_seeds[s](t) on grid ts, return each
 # realization's net drift rate r_s = (φ_s[end]−φ_s[1])/T and their RMS over seeds.
