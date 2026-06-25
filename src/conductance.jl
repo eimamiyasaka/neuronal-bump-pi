@@ -15,6 +15,18 @@
 # NON-NEGATIVE conductance channels (note §2):
 #   K_E = 0.4 + 0.3cos + B sin   (excitation + the velocity-shift; rides on excitation)
 #   K_I = 0.3                     (uniform inhibition)        K_E − K_I = K exactly
+#
+# STRUCTURED INHIBITION (Phase-5 divisive-shunting extension; default OFF). The flat
+# K_I above makes the inhibitory conductance g_I = g0∫K_I·P spatially UNIFORM, so the
+# shunt is subtractive (it holds the silent surround but cannot reshape the bump) and
+# cranking g0 floods/collapses the bump rather than dividing its gain. Giving K_I a
+# cosine structure (a1=aI>0) makes g_I(x) TRACK the bump, so the shunt G(x) is localized
+# and the inhibition acts DIVISIVELY at the bump. To keep the NET kernel (hence the
+# Phase-1–4 bump) unchanged, the caller must preserve K_E − K_I = 0.1 + 0.3cos + B sin,
+# i.e. cE−cI = 0.1 and aE−aI = 0.3 (so structuring I by aI means aE = 0.3+aI). Dale
+# non-negativity caps aI: K_E = cE+aE cos+B sin ≥ 0 ⇒ aI ≲ 0.1 at B=0. aI defaults to
+# 0.0 so every existing call is bit-identical to the flat-K_I model. See
+# scripts/run_structured_inhibition.jl and notes/writeupAssist/step5_divisive_gate.md.
 #   g_E = κ·∫K_E·P ≥ 0 ,  g_I = κ·∫K_I·P ≥ 0     (instantaneous — no extra ODEs)
 #   J = E_E·g_E + E_I·g_I   (reversal-weighted current → enters η̄+J)
 #   G = g_E + g_I           (total conductance → the new shunting term)
@@ -62,23 +74,26 @@ end
 
 struct RingSyn
     KE::RingKernel                # rank-3 excitatory kernel (carries cosx/sinx of positions)
-    KI::RingKernel                # rank-3 inhibitory kernel (uniform: a1=B=0)
+    KI::RingKernel                # rank-3 inhibitory kernel (flat ⇒ a1=B=0; structured ⇒ a1=aI>0)
     g0::Float64                   # conductance gain (shunt strength)
     E_E::Float64
     E_I::Float64
 end
 
 # Build the field/ring Dale configs (note §2 constants). B rides on the excitatory
-# channel (the velocity-shift); K_E − K_I = 0.1 + 0.3cos + B sin = the original kernel.
-function dale_field(x, E_E, E_I; g0=1.0, B=0.0, cE=0.4, aE=0.3, cI=0.3)
+# channel (the velocity-shift); with the defaults K_E − K_I = 0.1 + 0.3cos + B sin = the
+# original kernel. `aI` is the inhibitory cosine structure (default 0.0 ⇒ flat K_I, the
+# validated Phase-4 model, bit-identical); set aI>0 for the divisive structured-inhibition
+# extension, and set aE=0.3+aI at the call site to hold the net kernel fixed (see note above).
+function dale_field(x, E_E, E_I; g0=1.0, B=0.0, cE=0.4, aE=0.3, cI=0.3, aI=0.0)
     KhatE = fft(cE .+ aE .* cos.(x) .+ B .* sin.(x))
-    KhatI = fft(fill(cI, length(x)))
+    KhatI = fft(cI .+ aI .* cos.(x))
     return FieldSyn(KhatE, KhatI, g0, E_E, E_I)
 end
 
-function dale_ring(x, E_E, E_I; g0=1.0, B=0.0, cE=0.4, aE=0.3, cI=0.3)
+function dale_ring(x, E_E, E_I; g0=1.0, B=0.0, cE=0.4, aE=0.3, cI=0.3, aI=0.0)
     KE = make_kernel(x; a0=cE, a1=aE, B=B)
-    KI = make_kernel(x; a0=cI, a1=0.0, B=0.0)
+    KI = make_kernel(x; a0=cI, a1=aI, B=0.0)
     return RingSyn(KE, KI, g0, E_E, E_I)
 end
 
